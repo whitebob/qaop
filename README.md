@@ -28,7 +28,7 @@ However, there are some problems with this solution.
 	Though the public static member is inherited, but for initialization, one must give out the full instance for the template. And this means, you can not write like this :
 
 ```c++
-tempalte<> Combined::static_memberA(xxx);
+template<> Combined::static_memberA(xxx);
 ```
 but have to write like this
 
