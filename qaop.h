@@ -116,50 +116,18 @@ struct Decorate{
 // the implemetion is a little complex, really. because we need the complie time solve of these name.
 // thus we use the compile time hash method to change the name into non-type template parameter.
 //
-template <size_t N>
-struct str_tr {
-	typedef const char(&truncated)[N-1];
-	char _str_tr[N-1]={};
-constexpr str_tr(char * str, size_t n) {
-	for(int i=0; i<n-1;i++){
-		_str_tr[i] = str[i];
-	}
-}
 
-template<size_t S>
-constexpr str_tr(const char (&str)[S]) : str_tr{(char*)str, S} {
-	}//though the reinterpret_cast could appear in constexpr, it could be used in initializer.
-
-constexpr truncated truncate(){
-	return _str_tr;
-	}
-};
-
-constexpr unsigned int _Hash(const char (&str)[1])
+constexpr size_t _Hash(char const * str, size_t seed)
 {
-	return *str + 0x9e3779b9;
+	   return 0 == *str ? seed : _Hash(str + 1, seed ^ (*str + 0x9e3779b9 + (seed << 6) + (seed >> 2)));
 }
 
-template <size_t N>
-constexpr unsigned int _Hash(const char (&str)[N])
-{
-	#define seed _Hash(str_tr<N>(str).truncate())
-	return seed ^ (*(str + N - 1) + 0x9e3779b9 + (seed << 6) + (seed >> 2));
-	#undef seed	
-}
-
-template <size_t N>
-constexpr unsigned int CTHash(const char (&str)[N])
-{
-	#define result str_tr<N>(str).truncate()
-	return _Hash<N - 1>(result); // not sure why directly call would not pass compiler without macro on clang.
-	#undef result
-}
+#define CT_HASH(x) (_Hash(x, 0))
 
 template <size_t N>
 constexpr unsigned int Name(const char (&str)[N])
 {
-	return _Hash<N>(str);
+	return _Hash(str, 0); //auto type matching from char(&)[N] to const char * ;
 }	
 
 template <typename _Class, typename _Type, unsigned int  N>
