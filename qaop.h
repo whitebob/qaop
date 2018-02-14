@@ -1,6 +1,8 @@
 #ifndef _QAOP_H_
 #define _QAOP_H_
 
+#include <map>
+#include <string>
 namespace qaop {
 
 /* Aspect example
@@ -76,6 +78,109 @@ struct Decorate{
 		typedef __LastAspect<typename _Remember::reference_t> combined_t;
 	};	
 };
+
+
+//In order to support static member, we use a base template :
+//example:
+//
+//template <typename _Base> 
+//struct AspectA : public _Base::this_t {
+//typedef AspectA this_t;
+//...
+//
+//
+//static qaop::static_proxy<this_t> sp.
+//
+//static get_xxx(){
+//	return sp.template proxy<type, qaop::Name("xxx")>();
+//}
+//
+//};
+//  
+// in the global initialization, you do this just as normal static member initiliazation.
+//
+// Initialization {
+//	proxy<fulltype, type, qaop::Name("xxx")>(initialization parameters);
+// }
+//
+// You do not  need to define the static varible name, just use it using the proxy.
+// a little bit complex? It is in fact quite direct. 
+//
+// because the static varibles should be defined not in each aspect.
+// Otherwise, all class inherited/decorated with the aspect[*see note] would have same static varible address.
+// That' s not exactly what we want. We want a static member for the fulltype class. and we may expect 
+// different fulltype may have different static member values/addresses for their own.
+//
+// Note *: this is not 100% right, because you have template parameters. we should say with same parameters the aspect would have same address)  
+//
+// the implemetion is a little complex, really. because we need the complie time solve of these name.
+// thus we use the compile time hash method to change the name into non-type template parameter.
+//
+template <size_t N>
+struct str_tr {
+	typedef const char(&truncated)[N-1];
+	char _str_tr[N-1]={};
+constexpr str_tr(char * str, size_t n) {
+	for(int i=0; i<n-1;i++){
+		_str_tr[i] = str[i];
+	}
+}
+
+template<size_t S>
+constexpr str_tr(const char (&str)[S]) : str_tr{(char*)str, S} {
+	}//though the reinterpret_cast could appear in constexpr, it could be used in initializer.
+
+constexpr truncated truncate(){
+	return _str_tr;
+	}
+};
+
+constexpr unsigned int _Hash(const char (&str)[1])
+{
+	return *str + 0x9e3779b9;
+}
+
+template <size_t N>
+constexpr unsigned int _Hash(const char (&str)[N])
+{
+	#define seed _Hash(str_tr<N>(str).truncate())
+	return seed ^ (*(str + N - 1) + 0x9e3779b9 + (seed << 6) + (seed >> 2));
+	#undef seed	
+}
+
+template <size_t N>
+constexpr unsigned int CTHash(const char (&str)[N])
+{
+	#define result str_tr<N>(str).truncate()
+	return _Hash<N - 1>(result); // not sure why directly call would not pass compiler without macro on clang.
+	#undef result
+}
+
+template <size_t N>
+constexpr unsigned int Name(const char (&str)[N])
+{
+	return _Hash<N>(str);
+}	
+
+template <typename _Class, typename _Type, unsigned int  N>
+_Type & static_member(_Type il = _Type()) {
+	static _Type object(il);
+	return object;
+};
+
+template< typename  _Class>
+struct static_proxy {
+	template<typename _Type, unsigned int N>
+	static _Type & proxy(_Type il = _Type()) {
+		return qaop::static_member<typename _Class::fulltype_t, _Type, N>(il);
+	}
+};
+
+template <typename _Class, typename _Type, unsigned int N>
+_Type & proxy(_Type il = _Type()) {
+	return qaop::static_member<typename _Class::fulltype_t, _Type, N>(il);
+}
+
 
 //Pattern 2:  Clone & Take 
 //
