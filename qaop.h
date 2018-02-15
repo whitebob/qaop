@@ -78,8 +78,26 @@ struct Decorate{
 		typedef __LastAspect<typename _Remember::reference_t> combined_t;
 	};	
 };
+// the following is convenient for combine multiple aspects into one
+//
+// usage: 
+// template <typename _Class>
+// using CombinedAspects = qaop::Combine<Aspect1, Aspect2>::combined<_Class>;
+//
+template < template <typename> class ... __Aspects >
+struct Combine;
 
+template < template <typename> class __FirstAspect, template <typename> class ... __RestAspects >
+struct Combine<__FirstAspect, __RestAspects...> {
+	template <typename _Class>
+	using combined = __FirstAspect<typename Combine<__RestAspects... >::template combined<_Class> >;
+};
 
+template< template <typename> class __LastAspect >
+struct Combine<__LastAspect> {
+	template <typename _Class>
+	using combined = __LastAspect<_Class>;
+};
 //In order to support static member, we use a base template :
 //example:
 //
@@ -117,7 +135,7 @@ struct Decorate{
 // thus we use the compile time hash method to change the name into non-type template parameter.
 //
 
-constexpr size_t _Hash(char const * str, size_t seed)
+constexpr unsigned int _Hash(char const * str, size_t seed)
 {
 	   return 0 == *str ? seed : _Hash(str + 1, seed ^ (*str + 0x9e3779b9 + (seed << 6) + (seed >> 2)));
 }
