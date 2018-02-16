@@ -131,16 +131,20 @@ struct Combine<__LastAspect> {
 //
 // Note *: this is not 100% right, because you have template parameters. we should say with same parameters the aspect would have same address)  
 //
-// the implemetion is a little complex, really. because we need the complie time solve of these name.
+// the implemetion is a little complex. because we need the complie time solve of these name.
 // thus we use the compile time hash method to change the name into non-type template parameter.
 //
+// the following hash code is from  KlayGE, I don't find the original source code but from his webpage.
+// the GPLv2 Licence/ KPL licences apply to the code part.
 
+// ******Hash code from KlayGE begin ***** //  
 constexpr unsigned int _Hash(char const * str, size_t seed)
 {
 	   return 0 == *str ? seed : _Hash(str + 1, seed ^ (*str + 0x9e3779b9 + (seed << 6) + (seed >> 2)));
 }
 
 #define CT_HASH(x) (_Hash(x, 0))
+// ******Hash code from KlayG end ***** //  
 
 template <size_t N>
 constexpr unsigned int Name(const char (&str)[N])
