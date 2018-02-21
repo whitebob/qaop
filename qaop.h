@@ -185,30 +185,30 @@ _Type & proxy(_Type il = _Type()) {
 //
 //
 //forward decl
-std::function<int()> default_advice (std::function<int()> & f) {
-	return [&f](){
+template < typename _Fulltype, typename _Callable > 
+struct action {
+
+typedef std::function<int()> func_t; 
+typedef func_t (* advice_t)(_Fulltype *, func_t & ); 
+
+static std::function<int()> default_advice (_Fulltype * self, std::function<int()> & f) {
+	return [&f, &self](){
 	std::cout<<"default advice before" <<std::endl;
 		f();
 	std::cout<<"default advice after" <<std::endl;
 		return 0;
 	};
 }	
-template < typename _Fulltype, typename _Callable > 
-struct action {
-
-typedef std::function<int()> func_t; 
-typedef func_t (* advice_t)( func_t & ); 
-
 _Callable & _fn;
 func_t _closure;
 advice_t advice;
-action(_Callable & fn, advice_t ad = &qaop::default_advice) : _fn(fn), advice(ad) {}
+action(_Callable & fn, advice_t ad = &action::default_advice) : _fn(fn), advice(ad) {}
  
 template < typename ... _Params >
 void execute(_Fulltype * self, _Params ... args) {
 	_closure = std::bind(_fn, self, args...);
 	if (nullptr != advice)
-		(*advice)(_closure)();
+		(*advice)(self, _closure)();
         else
 		_closure();	
 }	
@@ -217,7 +217,7 @@ template < typename _Ret, typename ... _Params >
 void execute_r(_Fulltype * self, _Ret & ret,  _Params ... args) {
 	_closure = std::bind(_fn, self, ret, args...);
 	if (nullptr != advice)
-		(*advice)(_closure)();
+		(*advice)(self, _closure)();
         else
 		_closure();	
 }	
@@ -254,7 +254,7 @@ _Ret & invoke(_Fulltype * self, _Ret (_Class:: *mf)(_Params... ), _Params ... ar
 		if (nullptr == it->second->advice)
 			f = it->second->template bind(self, ret, args...);
 		else
-			f = (*(it->second->advice))(f);
+			f = (*(it->second->advice))(self, f);
 	}
 	f();
 
@@ -286,7 +286,7 @@ void invoke(_Fulltype * self, void (_Class:: *mf)(_Params... ), _Params ... args
 		if (nullptr == it->second->advice)
 			f = it->second->template bind(self, args...);
 		else
-			f = (*(it->second->advice))(f);
+			f = (*(it->second->advice))(self, f);
 	}
 	f();
 
@@ -304,7 +304,7 @@ void add_before(_Ret (_Class::*func)(_Params...), qaop::action<_Fulltype, int(_F
 	typedef qaop::action<_Fulltype, int(_Fulltype *, _Params...)> action_t;
 	auto & mp = proxy<_Fulltype, std::multimap<unsigned int, action_t *>, qaop::Name("::before")>();
 	mp.insert(std::pair<unsigned int, action_t *>(HASHFUNC(func), action));
-	std::cout<<"Hash"<<_Hash(reinterpret_cast<char*>(reinterpret_cast<void*>(&func)),0)<<" Action:"<<action<<std::endl;
+	std::cout<<"Hash"<<_Hash(reinterpret_cast<char*>(reinterpret_cast<void*>(&func)),0)<<std::endl;
 	std::cout<<"add ret ::f(args...) before:"<<mp.size()<<std::endl;
 }
 
@@ -317,11 +317,29 @@ void add_insitu(_Ret (_Class::*func)(_Params...),  qaop::action<_Fulltype, int(_
 	std::cout<<"add ret::f(args...) insitu:"<<mp.size()<<std::endl;
 }
 
+template<typename _Fulltype, typename _Class, typename ... _Params>
+void add_insitu(void (_Class::*func)(_Params...),  qaop::action<_Fulltype, int(_Fulltype *,  _Params...)> * action) {
+	typedef qaop::action<_Fulltype, int(_Fulltype *, _Params...)> action_t;
+	auto & mp = proxy<_Fulltype, std::multimap<unsigned int, action_t *>, qaop::Name("::insitu")>();
+	mp.insert(std::pair<unsigned int,  action_t *>(HASHFUNC(func), action));
+	std::cout<<"Hash"<<_Hash(reinterpret_cast<char*>(reinterpret_cast<void*>(&func)),0)<<std::endl;;
+	std::cout<<"add ret::f(args...) insitu:"<<mp.size()<<std::endl;
+}
+
 template<typename _Fulltype, typename _Ret, typename _Class, typename ... _Params>
 void add_after(_Ret (_Class::*func)(_Params...),  qaop::action<_Fulltype, int(_Fulltype *, _Ret &,  _Params...)> * action) {
 	typedef qaop::action<_Fulltype, int(_Fulltype *, _Ret &,  _Params...)> action_r_t;
 	auto & mp = proxy<_Fulltype, std::multimap<unsigned int, action_r_t *>, qaop::Name("::after")>();
 	mp.insert(std::pair<unsigned int,  action_r_t *>(HASHFUNC(func), action));
+	std::cout<<"Hash"<<_Hash(reinterpret_cast<char*>(reinterpret_cast<void*>(&func)),0)<<std::endl;;
+	std::cout<<"add ret::f(args...) after:"<<mp.size()<<std::endl;
+}
+
+template<typename _Fulltype, typename _Class, typename ... _Params>
+void add_after(void (_Class::*func)(_Params...),  qaop::action<_Fulltype, int(_Fulltype *, _Params...)> * action) {
+	typedef qaop::action<_Fulltype, int(_Fulltype *,  _Params...)> action_t;
+	auto & mp = proxy<_Fulltype, std::multimap<unsigned int, action_t *>, qaop::Name("::after")>();
+	mp.insert(std::pair<unsigned int,  action_t *>(HASHFUNC(func), action));
 	std::cout<<"Hash"<<_Hash(reinterpret_cast<char*>(reinterpret_cast<void*>(&func)),0)<<std::endl;;
 	std::cout<<"add ret::f(args...) after:"<<mp.size()<<std::endl;
 }

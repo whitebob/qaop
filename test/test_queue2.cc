@@ -69,15 +69,26 @@ typedef typename _Queue::fulltype_t fulltype_t;
 int counter;
 count_():counter(0) {}
 
-/*
- {counter++;}
+std::function<int()> count_advice_add (std::function<int()> &f) {
+	return [=](){
+		f();
+		this->counter++;
+		return 0;
+	};
+}
 
- {counter--;}
-
-*/
+std::function<int()> count_advice_remove (std::function<int()> &f) {
+	return [=](){
+		f();
+		if(counter > 0)
+			this->counter--;
+		return 0;
+	};
+}
 	
 
 int count() const { return  counter;}
+
 };
 
 template <typename _Class>
@@ -90,8 +101,8 @@ struct lock_ : public _Queue::this_t {
 	typedef typename _Queue::fulltype_t fulltype_t;
 	std::mutex lock;
 
-std::function<int()> & lock_advice (std::function<int()> & f) {
-		return [this, &f]() {
+std::function<int()>  lock_advice (std::function<int()> & f) {
+		return [=]() {
 			lock.lock();
 			try {
 				f();
@@ -128,11 +139,26 @@ int print2(JointLockCountQueue * self, util::Item * pi) {
 	return 0;
 }
 
+int enqueue_w (JointLockCountQueue * self, util::Item * pi) {
+	self->Queue::enqueue(pi);
+	return 0;
+}
 int dequeue_w (JointLockCountQueue * self, util::Item *& pi) {
 	pi = self->Queue::dequeue();
 	return 0;
 }
 
+std::function<int()>  lock_advice_w (JointLockCountQueue * self, std::function<int()> & f) {
+	return self->lock_advice(f);
+}
+std::function<int()>  count_advice_add_w (JointLockCountQueue * self, std::function<int()> & f) {
+	std::cout<<"advice add wrap"<<std::endl;
+	return self->count_advice_add(f);
+}
+std::function<int()>  count_advice_remove_w (JointLockCountQueue * self, std::function<int()> & f) {
+	std::cout<<"advice remove wrap"<<std::endl;
+	return self->count_advice_remove(f);
+}
 
 
 void initializtion() {
@@ -143,12 +169,25 @@ void initializtion() {
 	static qaop::action<JointLockCountQueue, decltype(print_a)> m_a{print_a};
 	static qaop::action<JointLockCountQueue, decltype(print2)> n{print2};
 	static qaop::action<JointLockCountQueue, decltype(dequeue_w)> d{dequeue_w,nullptr};
-	//static qaop::action<JointLockCountQueue, decltype(util::Queue::enqueue)> e{util::Queue::enqueue, nullptr};
+	static qaop::action<JointLockCountQueue, decltype(enqueue_w)> e{enqueue_w,nullptr};
+	static qaop::action<JointLockCountQueue, decltype(enqueue_w)> u{enqueue_w, &lock_advice_w};
+	static qaop::action<JointLockCountQueue, decltype(dequeue_w)> v{dequeue_w, &lock_advice_w};
+	static qaop::action<JointLockCountQueue, decltype(enqueue_w)> a{enqueue_w, &count_advice_add_w};
+	static qaop::action<JointLockCountQueue, decltype(dequeue_w)> r{dequeue_w, &count_advice_remove_w};
+	//
 	qaop::add_insitu<JointLockCountQueue>(&JointLockCountQueue::jointpoint_::dequeue, &d);
-	//qaop::add_insitu<JointLockCountQueue>(&JointLockCountQueue::jointpoint_::enqueue, &e);
+	qaop::add_insitu<JointLockCountQueue>(&JointLockCountQueue::jointpoint_::enqueue, &e);
+	
+	qaop::add_before<JointLockCountQueue>(&JointLockCountQueue::jointpoint_::enqueue, &n);
+	qaop::add_after<JointLockCountQueue>(&JointLockCountQueue::jointpoint_::enqueue, &n);
+
+	qaop::add_insitu<JointLockCountQueue>(&JointLockCountQueue::jointpoint_::dequeue, &r);;
+	qaop::add_insitu<JointLockCountQueue>(&JointLockCountQueue::jointpoint_::enqueue, &a);;
+	qaop::add_insitu<JointLockCountQueue>(&JointLockCountQueue::jointpoint_::enqueue, &u);;
+	qaop::add_insitu<JointLockCountQueue>(&JointLockCountQueue::jointpoint_::dequeue, &v);;
+
 	qaop::add_before<JointLockCountQueue>(&JointLockCountQueue::jointpoint_::dequeue, &m);
 	qaop::add_after<JointLockCountQueue>(&JointLockCountQueue::jointpoint_::dequeue, &m_a);
-	qaop::add_before<JointLockCountQueue>(&JointLockCountQueue::jointpoint_::enqueue, &n);
 }
 static struct A {A(){initializtion();}} a;
 
