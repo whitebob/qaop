@@ -204,6 +204,17 @@ static std::function<int(_Fulltype *, _Params...)> _ ( _Ret (_Class::* mfp)(_Par
 	return [=](_Fulltype *self, _Params... args)->int{if (nullptr != f ) f();return 0;}; 
 }
 
+//introduction wrap
+template<typename _Class, typename _Ret, typename ... _Params>
+static std::function<int(_Fulltype *, _Params...)> wrap ( _Ret (_Class::* mfp)(_Params...)) {
+	return [=](_Fulltype *self, _Params... args)->int {(self->*mfp)(args...); return 0;}; 
+}
+
+template<typename _Class, typename _Ret, typename ... _Params>
+static std::function<int(_Fulltype *, _Ret &,  _Params...)> wrap_r ( _Ret (_Class::* mfp)(_Params...)) {
+	return [=](_Fulltype *self, _Ret & ret, _Params... args)->int {ret = (self->*mfp)(args...); return 0;}; 
+}
+
 //advice wrap
 template <typename _Class> 
 static advice_t wrap ( func_t (_Class::* mfp)(func_t &) ) {
@@ -325,9 +336,11 @@ void invoke(_Fulltype * self, void (_Class:: *mf)(_Params... ), _Params ... args
 
 }
 
+template <typename _Fulltype>
+struct waven {
 
-template<typename _Fulltype, typename _Ret, typename _Class, typename ... _Params>
-void add_before(_Ret (_Class::*func)(_Params...), qaop::action<_Fulltype, std::function<int(_Fulltype *, _Params...)> > * action) {
+template<typename _Ret, typename _Class, typename ... _Params>
+static void before(_Ret (_Class::*func)(_Params...), qaop::action<_Fulltype, std::function<int(_Fulltype *, _Params...)> > * action) {
 	typedef qaop::action<_Fulltype, std::function< int(_Fulltype *, _Params...)> > action_t;
 	auto & mp = proxy<_Fulltype, std::multimap<unsigned int, action_t *>, qaop::Name("::before")>();
 	mp.insert(std::pair<unsigned int, action_t *>(HASHFUNC(func), action));
@@ -335,8 +348,8 @@ void add_before(_Ret (_Class::*func)(_Params...), qaop::action<_Fulltype, std::f
 	std::cout<<"add ret ::f(args...) before:"<<mp.size()<<std::endl;
 }
 
-template<typename _Fulltype, typename _Ret, typename _Class, typename ... _Params>
-void add_insitu(_Ret (_Class::*func)(_Params...),  qaop::action<_Fulltype, std::function<int(_Fulltype *, _Ret &,  _Params...)> > * action) {
+template<typename _Ret, typename _Class, typename ... _Params>
+static void insitu(_Ret (_Class::*func)(_Params...),  qaop::action<_Fulltype, std::function<int(_Fulltype *, _Ret &,  _Params...)> > * action) {
 	typedef qaop::action<_Fulltype, std::function<int(_Fulltype *, _Ret &,  _Params...)> > action_r_t;
 	auto & mp = proxy<_Fulltype, std::multimap<unsigned int, action_r_t *>, qaop::Name("::insitu")>();
 	mp.insert(std::pair<unsigned int,  action_r_t *>(HASHFUNC(func), action));
@@ -344,8 +357,8 @@ void add_insitu(_Ret (_Class::*func)(_Params...),  qaop::action<_Fulltype, std::
 	std::cout<<"add ret::f(args...) insitu:"<<mp.size()<<std::endl;
 }
 
-template<typename _Fulltype, typename _Class, typename ... _Params>
-void add_insitu(void (_Class::*func)(_Params...),  qaop::action<_Fulltype, std::function<int(_Fulltype *,  _Params...)> > * action) {
+template<typename _Class, typename ... _Params>
+static void insitu(void (_Class::*func)(_Params...),  qaop::action<_Fulltype, std::function<int(_Fulltype *,  _Params...)> > * action) {
 	typedef qaop::action<_Fulltype, std::function <int(_Fulltype *, _Params...)> > action_t;
 	auto & mp = proxy<_Fulltype, std::multimap<unsigned int, action_t *>, qaop::Name("::insitu")>();
 	mp.insert(std::pair<unsigned int,  action_t *>(HASHFUNC(func), action));
@@ -353,8 +366,8 @@ void add_insitu(void (_Class::*func)(_Params...),  qaop::action<_Fulltype, std::
 	std::cout<<"add ret::f(args...) insitu:"<<mp.size()<<std::endl;
 }
 
-template<typename _Fulltype, typename _Ret, typename _Class, typename ... _Params>
-void add_after(_Ret (_Class::*func)(_Params...),  qaop::action<_Fulltype, std::function<int(_Fulltype *, _Ret &,  _Params...)> > * action) {
+template<typename _Ret, typename _Class, typename ... _Params>
+static void after(_Ret (_Class::*func)(_Params...),  qaop::action<_Fulltype, std::function<int(_Fulltype *, _Ret &,  _Params...)> > * action) {
 	typedef qaop::action<_Fulltype, std::function<int(_Fulltype *, _Ret &,  _Params...)> > action_r_t;
 	auto & mp = proxy<_Fulltype, std::multimap<unsigned int, action_r_t *>, qaop::Name("::after")>();
 	mp.insert(std::pair<unsigned int,  action_r_t *>(HASHFUNC(func), action));
@@ -362,8 +375,8 @@ void add_after(_Ret (_Class::*func)(_Params...),  qaop::action<_Fulltype, std::f
 	std::cout<<"add ret::f(args...) after:"<<mp.size()<<std::endl;
 }
 
-template<typename _Fulltype, typename _Class, typename ... _Params>
-void add_after(void (_Class::*func)(_Params...),  qaop::action<_Fulltype, std::function<int(_Fulltype *, _Params...)> > * action) {
+template<typename _Class, typename ... _Params>
+static void after(void (_Class::*func)(_Params...),  qaop::action<_Fulltype, std::function<int(_Fulltype *, _Params...)> > * action) {
 	typedef qaop::action<_Fulltype, std::function<int(_Fulltype *,  _Params...)> > action_t;
 	auto & mp = proxy<_Fulltype, std::multimap<unsigned int, action_t *>, qaop::Name("::after")>();
 	mp.insert(std::pair<unsigned int,  action_t *>(HASHFUNC(func), action));
@@ -371,6 +384,7 @@ void add_after(void (_Class::*func)(_Params...),  qaop::action<_Fulltype, std::f
 	std::cout<<"add ret::f(args...) after:"<<mp.size()<<std::endl;
 }
 
+};
 //Pattern 2:  Clone & Take 
 //
 //Condition: 
