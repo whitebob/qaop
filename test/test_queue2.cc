@@ -1,6 +1,7 @@
 #include<cstdio>
 #include<mutex>
 #include "../qaop.h"
+#include<iostream>
 namespace util {
 	class Item {
 		friend class Queue;
@@ -132,8 +133,8 @@ int print(JointLockCountQueue * self){
 	return 0;
 }
 
-int print_a(JointLockCountQueue * self, util::Item * &pi) {
-	printf("Action called! Item %x, this %x \n", pi, self);
+int print_a(JointLockCountQueue * self, util::Item * *ppi) {
+	printf("Action called! Item %x, this %x \n", *ppi, self);
 	return 0;
 }
 
@@ -146,8 +147,8 @@ int enqueue_w (JointLockCountQueue * self, util::Item * pi) {
 	self->Queue::enqueue(pi);
 	return 0;
 }
-int dequeue_w (JointLockCountQueue * self, util::Item *& pi) {
-	pi = self->Queue::dequeue();
+int dequeue_w (JointLockCountQueue * self, util::Item ** pi) {
+	*pi = self->Queue::dequeue();
 	return 0;
 }
 
@@ -172,12 +173,11 @@ std::function<int()>  count_advice_remove_w (JointLockCountQueue * self, std::fu
 void initializtion() {
 	using namespace util;
 
-
 	static action<decltype(Q::_(&Queue::dequeue))> m{print};
 	//static action<decltype(Q::_r(&Queue::dequeue))> m_a{print_a};
 	static action<std::function<decltype(print_a)> > m_a{print_a};
 //	static action<decltype(Q::_(&Queue::enqueue))> n{print2};
-	static action<decltype(Q::_(&Queue::enqueue))> n{Q::_(&Queue::enqueue, [](){std::cout<<"try this!"<<std::endl;})};
+	static action<decltype(Q::_(&Queue::enqueue))> n{Q::_(&Queue::enqueue, []()->int{std::cout<<"try this!"<<std::endl; return 0;})};
 	
 	static action<decltype(Q::_r(&Queue::dequeue))> d{Q::wrap_r(&Queue::dequeue), nullptr};
 	static action<decltype(Q::_(&Queue::enqueue))> e{enqueue_w,nullptr};
@@ -187,7 +187,7 @@ void initializtion() {
 	static action< std::function<decltype(enqueue_w)> > u{enqueue_w, &lock_advice_w};
 	static action< std::function<decltype(dequeue_w)> > v{dequeue_w, &lock_advice_w};
 	//static action< std::function<decltype(enqueue_w)> > a{enqueue_w, &count_advice_add_w};
-	static action< std::function<decltype(enqueue_w)> > a{Q::_(&Queue::enqueue), Q::wrap(&JointLockCountQueue::count_advice_add)};
+	static action< std::function<decltype(enqueue_w)> > a{enqueue_w, Q::wrap(&JointLockCountQueue::count_advice_add)};
 	static action< std::function<decltype(dequeue_w)> > r{dequeue_w, &count_advice_remove_w};
 
 	
