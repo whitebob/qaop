@@ -76,3 +76,6 @@ static  action<decltype(stub::_(&Base::foo))> a3(stub::_(&Base::foo, [](){std::c
 ```
 Thus we can see, now the implemention of aspect has no fixed relationship with the base class and thus could be easily ported to other cases.
 And the initialaztion could be represented without the implement detail. Best of all, the client code needs nearly no change at all!
+
+This could be perfectly demostrated by the test_case. You can see all the files are exactly the same except for the _magic_ 'config.h'. In fact, I use a symbol link for all the other files : )
+
