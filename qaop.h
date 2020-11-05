@@ -204,19 +204,28 @@ struct stub {
 
 typedef std::function<func_t (_Fulltype *, func_t &) > advice_t; 
 
-//stub_r
+//stub_r : stub with return value
 template < typename _Class, typename _Ret, typename ... _Params >
 static std::function<int(_Fulltype *, _Ret *, _Params...)> _r ( _Ret (_Class::* mfp)(_Params...), std::function<int()> f = nullptr ) {
 	return [=](_Fulltype *self, _Ret * ret, _Params... args)->int { return (nullptr != f) ? f(): 0; };
 }
 
-//stub
+//stub : stub return void
 template < typename _Class, typename _Ret, typename ... _Params >
 static std::function<int(_Fulltype *, _Params...)> _ ( _Ret (_Class::* mfp)(_Params...), std::function<int()> f = nullptr ) {
 	return [=](_Fulltype *self, _Params... args)->int { return (nullptr != f) ? f(): 0; }; 
 }
 
-//introduction wrap
+//wrap_r : introduction for mem_func with return value
+template < typename _Class, typename _Ret, typename ... _Params >
+static std::function<int(_Fulltype *, _Ret *,  _Params...)> wrap_r ( _Ret (_Class::* mfp)(_Params...)) {
+	return [=](_Fulltype *self, _Ret * ret, _Params... args)->int {
+		get_addr((self->*mfp)(args...), ret); 
+		return 0;
+	}; 
+}
+
+//wrap : introduction for mem_func return void
 template < typename _Class, typename _Ret, typename ... _Params >
 static std::function<int(_Fulltype *, _Params...)> wrap ( _Ret (_Class::* mfp)(_Params...)) {
 	return [=](_Fulltype *self, _Params... args)->int {
@@ -225,14 +234,6 @@ static std::function<int(_Fulltype *, _Params...)> wrap ( _Ret (_Class::* mfp)(_
 	}; 
 }
 
-
-template < typename _Class, typename _Ret, typename ... _Params >
-static std::function<int(_Fulltype *, _Ret *,  _Params...)> wrap_r ( _Ret (_Class::* mfp)(_Params...)) {
-	return [=](_Fulltype *self, _Ret * ret, _Params... args)->int {
-		get_addr((self->*mfp)(args...), ret); 
-		return 0;
-	}; 
-}
 
 //advice wrap
 template < typename _Class > 
