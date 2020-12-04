@@ -111,6 +111,84 @@ struct AspectFoo : public _Base::this_t { // here is the only different part
                     .template proxy<double, qaop::Name("myDoubleMember")>();
 //*///
 
+// Enhancement original class could be divide into two categories:
+// 1. add new member function and new static members for class.
+// 2. enhance original member fucntions. 
+
+// the first aim could be easily achieved by previous design. and
+// the second aim would need more toys to play with.
+
+// Among the consepts of AOP, jointpoint plays an important role, in C++,
+// Jointpoints means virtual member function call. Another key concept in
+// AOP is advice, which are things done at jointpoints.
+
+// For each jointpoint, we could insert advice. the advice could be put 
+
+// 1. before jointpoint
+// 2. around jointpoint
+// 3. after jointpoint
+
+// for before case, advices should behave like stack, last inject, first exec
+// for after case, advices should behave like pipe, first inject, first exec
+// for around case, advices should be exectuted in a in hieratic callback way
+
+// As for advice, if you have an idea of python Decorator (@Decorator)
+// syntax sugar, advice is quite like its counterpart in AOP. 
+
+// By design we may want some advices have same signature with original 
+// member function, and we call this kind of advice "action".
+
+// on the other side, we also want some advices are interface-insensitve with
+// original member function, but have the abitity to access resources outside
+
+// After that we need to inject the advices into specific jointpoints
+// , that is, some virtual member function of original class. 
+// we call this proces waven.
+
+
+// In qaop, one advice is an aop member function, it act as higher level
+// fucntor which accept original class member function and return a new 
+// wraped function, the later could be invoked by aop-decorated class,
+// in a virtual function call way.  
+
+// Here is an simple example of advices
+/* 
+template < typename _Base >
+struct AspectCount : public _Base::this_t {
+using this_t = AspectCount;
+using base_t = _Base::this_t;
+using fulltype_t = _Base::fulltype_t;
+using func_t = std::function<int()> ;
+
+AspectCount() : counter(0) { }
+func_t adviceIncrease (func_t &f) {
+	return [=]() {
+		f();
+		this->counter++;
+		return 0;
+	};
+}
+func_t adviceDecrease (func_t &f) {
+	return [=]() {
+		f();
+		if(counter > 0)
+			this->counter--;
+		return 0;
+	};
+}
+int count() const {return  counter;}
+
+int counter;
+}; // struct AspectCount
+*/
+
+
+/*
+
+*/
+
+
+
 // If you have no intrests in how it works, that's all what you need to know.
 // If you want to run after the rabbit, come with me ...
 //*/
@@ -278,15 +356,6 @@ _Type& proxy(_Type il = _Type()) {
     return qaop::static_member<typename _Class::fulltype_t, _Type, N>(il);
 }
 
-// In order to support jointpoints, we need a delegate template function.
-// use it like this:
-//
-// virtual int method ( type1  param1, type2 param2 ....) {
-//	invoke<fulltype_t>(&method, param1, param2);
-// }
-//
-//
-// forward decl
 
 template <typename T> void get_addr(T&& t, T*& aim, std::true_type a) {
     aim = &t;
@@ -299,6 +368,28 @@ template <typename T> void get_addr(T&& t, T*& aim) {
 }
 
 using func_t = std::function<int()>;
+
+// Remember we have said virtual mem_func is the jointpoint,
+// but what we need is a virtual fulltype_t::mem_func as the 
+// entry, so we use stub to do the trick;
+
+// stub provide some simple wrap methods for member function:
+// stub<fulltype_t>::_r(&base_t::mem_func, wrap_func) will return a wrapped 
+// function<int(&fulltype_t, _ret, _params...)> which has the 
+// correct signature but execute wrap_func instead of 
+// base member func 
+ 
+// stub::_(&base_t::mem_func, wrap_func) do the same, just for 
+// functions without ret_type.
+
+// stub::wrap_r will retuen a function which will execute 
+// the fulltype_t result and set the executed result back to 
+// ref or pointer 
+
+// stub::wrap will do the same, just for no ret case.
+
+// in particular case, wrap on an advice, which will return
+// an advice which will append advice on existing advice.
 
 template <typename _Fulltype> struct stub {
 
@@ -352,24 +443,21 @@ template <typename _Fulltype> struct stub {
 
 }; // struct stub
 
+
+// action is one of the concrete code executed at each jointpoint.
+
 template <typename _Fulltype, typename _Callable> struct action {
 
     typedef std::function<func_t(_Fulltype*, func_t&)> advice_t;
 
     static func_t default_advice(_Fulltype* self, func_t& f) {
-        return [=]() {
-            // default advice before start
-            // default advice before end
-            f();
-            // default advice after start
-            // default advice after end
-            return 0;
-        };
+        return [=]() { f(); return 0; };
     }
 
     _Callable _fn;
     func_t _closure;
     advice_t advice;
+
     action(_Callable fn, advice_t ad = action::default_advice)
         : _fn(fn), advice(ad) {}
 
@@ -399,6 +487,28 @@ template <typename _Fulltype, typename _Callable> struct action {
 
 }; // struct action
 
+// For each joint point, there may be more than one advice, so we use 
+// a map to manage them. Specifically, the advice may be put 
+// 1. before jointpoint
+// 2. around jointpoint
+// 3. after jointpoint
+// for before case, advices should behave like stack, last inject, first exec
+// for after case, advices should behave like pipe, first inject, first exec
+// for around case, advice should work in a in inhertive callback way  
+
+// Invoke is a resolver for all hooked advices and execute with 
+// real params for certail jointpoint
+
+// 
+// In order to support jointpoints, we need a delegate template function.
+// for each joint point, we need to define like this:
+//
+// virtual RetType method (Type1 param1, Type2 param2 ....) {
+//	   return invoke<fulltype_t>(&method, param1, param2);
+// }
+//
+//
+
 #define HASHFUNC(x)                                                            \
     (_Hash(reinterpret_cast<char*>(reinterpret_cast<void*>(&x)), 0))
 
@@ -406,11 +516,8 @@ template <typename _Fulltype, typename _Class, typename _Ret,
           typename... _Params>
 _Ret& invoke(_Fulltype* self, _Ret (_Class::*mf)(_Params...), _Params... args) {
 
-    typedef qaop::action<_Fulltype, std::function<int(_Fulltype*, _Params...)>>
-            action_t;
-    typedef qaop::action<_Fulltype,
-                         std::function<int(_Fulltype*, _Ret*, _Params...)>>
-            action_r_t;
+    using action_t = qaop::action<_Fulltype, std::function<int(_Fulltype*, _Params...)>>;
+    using action_r_t = qaop::action<_Fulltype, std::function<int(_Fulltype*, _Ret*, _Params...)>>;
 
     auto range = proxy<_Fulltype, std::multimap<unsigned int, action_t*>,
                        qaop::Name("::before")>()
