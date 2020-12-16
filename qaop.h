@@ -497,8 +497,9 @@ template <typename _Fulltype, typename _Callable> struct action {
 // for around case, advice should work in a in inhertive callback way  
 
 // Invoke is a resolver for all hooked advices and execute with 
-// real params for certail jointpoint
-
+// real params for certain jointpoint
+//
+// Here we identify jointpint by the hashcode of each original member func.
 // 
 // In order to support jointpoints, we need a delegate template function.
 // for each joint point, we need to define like this:
@@ -518,24 +519,28 @@ _Ret& invoke(_Fulltype* self, _Ret (_Class::*mf)(_Params...), _Params... args) {
 
     using action_t = qaop::action<_Fulltype, std::function<int(_Fulltype*, _Params...)>>;
     using action_r_t = qaop::action<_Fulltype, std::function<int(_Fulltype*, _Ret*, _Params...)>>;
-
+    
+    // here we use action_t (without ret) signature for "::before",
+    // because before the call process, the ret value is meaningless. 
     auto range = proxy<_Fulltype, std::multimap<unsigned int, action_t*>,
                        qaop::Name("::before")>()
                          .equal_range(HASHFUNC(mf));
     for (auto it = range.first; it != range.second; it++) {
-        // invoke ret ::f(args...) execute before
         it->second->template execute(self, args...);
     }
-
+    
+    // default dummy action
     std::function<int()> f = []() { return 0; };
     _Ret temp;
     _Ret* ret = &temp;
-
+    
+    // Here we must use advice, which is higer order fucntion
+    // f = advice(self,f);  in this way we got recursive calls executed;
     auto range_i = proxy<_Fulltype, std::multimap<unsigned int, action_r_t*>,
                          qaop::Name("::insitu")>()
                            .equal_range(HASHFUNC(mf));
     for (auto it = range_i.first; it != range_i.second; it++) {
-        // invoke ret ::f(args...) execute insitu
+        // Until the recursive all ends, we bind the real parameters and ret
         if (nullptr == it->second->advice)
             f = it->second->template bind(self, ret, args...);
         else
@@ -543,11 +548,12 @@ _Ret& invoke(_Fulltype* self, _Ret (_Class::*mf)(_Params...), _Params... args) {
     }
     f();
 
+    // Now we use action_t_r (with ret) signature for "::after",
+    // because the ret value is avaiable now.
     auto range_r = proxy<_Fulltype, std::multimap<unsigned int, action_r_t*>,
                          qaop::Name("::after")>()
                            .equal_range(HASHFUNC(mf));
     for (auto it = range_r.first; it != range_r.second; it++) {
-        // invoke ret ::f(args...) execute after
         it->second->template execute_r(self, ret, args...);
     }
 
@@ -574,7 +580,6 @@ void invoke(_Fulltype* self, void (_Class::*mf)(_Params...), _Params... args) {
                          qaop::Name("::insitu")>()
                            .equal_range(HASHFUNC(mf));
     for (auto it = range_i.first; it != range_i.second; it++) {
-        // invoke void ::f(args...) execute insitu
         if (nullptr == it->second->advice)
             f = it->second->template bind(self, args...);
         else
@@ -590,6 +595,9 @@ void invoke(_Fulltype* self, void (_Class::*mf)(_Params...), _Params... args) {
         it->second->template execute(self, args...);
     }
 }
+
+// Waven is responsible for preparing the actions & advices 
+// it should be easier to use.
 
 template <typename _Fulltype> struct waven {
 
