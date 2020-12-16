@@ -1,3 +1,53 @@
+# qaop 2.0
+From this version: 
+
+Some changes will be brougt to the whole architect.
+
+0. The license will be Apache License 2.0. I do want more people to use it and not worried about opening their code, especially as a framework. Surely Pull Request is welcome if you really think this code is not totally piece of junk.
+
+1. The interface of waven and use jointpointAOP class is too complex, and the syntax is somehow weird (please forgive my vanity :p). In this version the interface will be much simpler.  
+
+2. previous aspect deocration strongly depends on the sequence. 
+```
+qaop::Decorate<Base>::with<AspectFoo, AspectBar>::type
+```
+is different with 
+```
+qaop::Decorate<Base>::with<AspectBar, AspectFoo>::type
+```
+, which they should be. In this new version, we will try to implement the composite type with set structure.
+ 
+3. In the OOP scenario, if class B is derived from A, after using AOP enchance, we expect aop DecoratedB "ISA" DecoratedA, which is not true in version qaop 1.0. In fact, DecoratedA "ISA" A, and DecoratedB "ISA" B and also "ISA" A; however, DecoratedB don't have "ISA" relationship with DecoratedA.  It is obviously not good enough. Considering we have the following code:
+```
+void funcBase(A* p) {
+    p->foo();
+} 
+void funcDerived(B* p) {
+    p->foo();
+    p->bar();
+} 
+```
+We could easily use DecoratedA pointer for funcBase and DecoratedB pointer for funcDerived.
+A simple trick will do, everything goes fine.  
+```
+using A = DecoratedA;
+using B = DecoratedB;
+```
+However, when we want to use the decorated fulltype as interface, it is like this:
+```
+virtual DecoratedA * someVirtualFunc() {
+    ....
+}
+
+virtual DecoratedB * someVirtualFunc() {
+    ....
+}
+
+```
+we could see the DecoratedB is not covariant with DecoratedA anymore, which might break the original design.
+we will try to solve this in version 2.0
+
+
 # qaop
 QAOP is a header only C++ AOP framwork. 
 
