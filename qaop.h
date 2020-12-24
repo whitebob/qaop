@@ -204,7 +204,7 @@ template <typename _Base, template <typename> class... __Aspects>
 struct aopbase {
     // reference_t will keep the same during iteration.
     using reference_t = aopfy<aopbase, __Aspects...>;
-    using base_t _Base;
+    using base_t = _Base;
 };
 
 // iteration template defination.
@@ -213,13 +213,13 @@ template <typename _AopBase, template <typename> class __FirstAspects,
 struct aopfy<_AopBase, __FirstAspects, __RestAspects...> {
     using fulltype_t = __FirstAspects<
             typename aopfy<_AopBase, __RestAspects...>::fulltype_t>;
-    using this_t = AopBase::base_t;
+    using this_t = typename _AopBase::base_t;
 };
 
 // end of iteration tempalte defination.
 template <typename _AopBase> struct aopfy<_AopBase> {
-    using fulltype_t = _AopBase::reference_t; // magic begins from here.
-    using this_t = _AopBase::base_t; // this is why the reconstuction works.
+    using fulltype_t = typename _AopBase::reference_t; // magic begins from here.
+    using this_t = typename _AopBase::base_t; // this is why the reconstuction works.
                                      // Aspects should only inherate from
                                      // this_t, not the aopfy<> class.
 };
@@ -241,7 +241,7 @@ template <typename _Base> struct Decorate {
     struct with_imp;
 
     template <template <typename> class... __Aspects> struct with {
-        using type = with_imp<remember<__Aspects...>, __Aspects...>::combined_t;
+        using type = typename with_imp<remember<__Aspects...>, __Aspects...>::combined_t;
     };
 
     template <typename _Remember, template <typename> class __FirstAspect,
@@ -531,7 +531,7 @@ _Ret& invoke(_Fulltype* self, _Ret (_Class::*mf)(_Params...), _Params... args) {
     
     // default dummy action
     std::function<int()> f = []() { return 0; };
-    _Ret temp;
+    static _Ret temp;
     _Ret* ret = &temp;
     
     // Here we must use advice, which is higer order fucntion
