@@ -113,7 +113,7 @@ struct AspectFoo : public _Base::this_t { // here is the only different part
 
 // Enhancement original class could be divide into two categories:
 // 1. add new member function and new static members for class.
-// 2. enhance original member fucntions. 
+// 2. enhance original member fucntions.
 
 // the first aim could be easily achieved by previous design. and
 // the second aim would need more toys to play with.
@@ -122,7 +122,7 @@ struct AspectFoo : public _Base::this_t { // here is the only different part
 // Jointpoints means virtual member function call. Another key concept in
 // AOP is advice, which are things done at jointpoints.
 
-// For each jointpoint, we could insert advice. the advice could be put 
+// For each jointpoint, we could insert advice. the advice could be put
 
 // 1. before jointpoint
 // 2. around jointpoint
@@ -133,26 +133,25 @@ struct AspectFoo : public _Base::this_t { // here is the only different part
 // for around case, advices should be exectuted in a in hieratic callback way
 
 // As for advice, if you have an idea of python Decorator (@Decorator)
-// syntax sugar, advice is quite like its counterpart in AOP. 
+// syntax sugar, advice is quite like its counterpart in AOP.
 
-// By design we may want some advices have same signature with original 
+// By design we may want some advices have same signature with original
 // member function, and we call this kind of advice "action".
 
 // on the other side, we also want some advices are interface-insensitve with
 // original member function, but have the abitity to access resources outside
 
 // After that we need to inject the advices into specific jointpoints
-// , that is, some virtual member function of original class. 
+// , that is, some virtual member function of original class.
 // we call this proces waven.
 
-
 // In qaop, one advice is an aop member function, it act as higher level
-// fucntor which accept original class member function and return a new 
+// fucntor which accept original class member function and return a new
 // wraped function, the later could be invoked by aop-decorated class,
-// in a virtual function call way.  
+// in a virtual function call way.
 
 // Here is an simple example of advices
-/* 
+/*
 template < typename _Base >
 struct AspectCount : public _Base::this_t {
 using this_t = AspectCount;
@@ -162,19 +161,19 @@ using func_t = std::function<int()> ;
 
 AspectCount() : counter(0) { }
 func_t adviceIncrease (func_t &f) {
-	return [=]() {
-		f();
-		this->counter++;
-		return 0;
-	};
+    return [=]() {
+        f();
+        this->counter++;
+        return 0;
+    };
 }
 func_t adviceDecrease (func_t &f) {
-	return [=]() {
-		f();
-		if(counter > 0)
-			this->counter--;
-		return 0;
-	};
+    return [=]() {
+        f();
+        if(counter > 0)
+            this->counter--;
+        return 0;
+    };
 }
 int count() const {return  counter;}
 
@@ -182,12 +181,9 @@ int counter;
 }; // struct AspectCount
 */
 
-
 /*
 
 */
-
-
 
 // If you have no intrests in how it works, that's all what you need to know.
 // If you want to run after the rabbit, come with me ...
@@ -218,10 +214,12 @@ struct aopfy<_AopBase, __FirstAspects, __RestAspects...> {
 
 // end of iteration tempalte defination.
 template <typename _AopBase> struct aopfy<_AopBase> {
-    using fulltype_t = typename _AopBase::reference_t; // magic begins from here.
-    using this_t = typename _AopBase::base_t; // this is why the reconstuction works.
-                                     // Aspects should only inherate from
-                                     // this_t, not the aopfy<> class.
+    using fulltype_t =
+            typename _AopBase::reference_t; // magic begins from here.
+    using this_t =
+            typename _AopBase::base_t; // this is why the reconstuction works.
+                                       // Aspects should only inherate from
+                                       // this_t, not the aopfy<> class.
 };
 
 // In fact, you can use AOP just by the upper codes
@@ -241,7 +239,8 @@ template <typename _Base> struct Decorate {
     struct with_imp;
 
     template <template <typename> class... __Aspects> struct with {
-        using type = typename with_imp<remember<__Aspects...>, __Aspects...>::combined_t;
+        using type = typename with_imp<remember<__Aspects...>,
+                                       __Aspects...>::combined_t;
     };
 
     template <typename _Remember, template <typename> class __FirstAspect,
@@ -356,7 +355,6 @@ _Type& proxy(_Type il = _Type()) {
     return qaop::static_member<typename _Class::fulltype_t, _Type, N>(il);
 }
 
-
 template <typename T> void get_addr(T&& t, T*& aim, std::true_type a) {
     aim = &t;
 }
@@ -370,21 +368,21 @@ template <typename T> void get_addr(T&& t, T*& aim) {
 using func_t = std::function<int()>;
 
 // Remember we have said virtual mem_func is the jointpoint,
-// but what we need is a virtual fulltype_t::mem_func as the 
+// but what we need is a virtual fulltype_t::mem_func as the
 // entry, so we use stub to do the trick;
 
 // stub provide some simple wrap methods for member function:
-// stub<fulltype_t>::_r(&base_t::mem_func, wrap_func) will return a wrapped 
-// function<int(&fulltype_t, _ret, _params...)> which has the 
-// correct signature but execute wrap_func instead of 
-// base member func 
- 
-// stub::_(&base_t::mem_func, wrap_func) do the same, just for 
+// stub<fulltype_t>::_r(&base_t::mem_func, wrap_func) will return a wrapped
+// function<int(&fulltype_t, _ret, _params...)> which has the
+// correct signature but execute wrap_func instead of
+// base member func
+
+// stub::_(&base_t::mem_func, wrap_func) do the same, just for
 // functions without ret_type.
 
-// stub::wrap_r will retuen a function which will execute 
-// the fulltype_t result and set the executed result back to 
-// ref or pointer 
+// stub::wrap_r will retuen a function which will execute
+// the fulltype_t result and set the executed result back to
+// ref or pointer
 
 // stub::wrap will do the same, just for no ret case.
 
@@ -443,15 +441,17 @@ template <typename _Fulltype> struct stub {
 
 }; // struct stub
 
-
 // action is one of the concrete code executed at each jointpoint.
 
 template <typename _Fulltype, typename _Callable> struct action {
 
-    typedef std::function<func_t(_Fulltype*, func_t&)> advice_t;
+    using advice_t = std::function<func_t(_Fulltype*, func_t&)>;
 
     static func_t default_advice(_Fulltype* self, func_t& f) {
-        return [=]() { f(); return 0; };
+        return [=]() {
+            f();
+            return 0;
+        };
     }
 
     _Callable _fn;
@@ -487,20 +487,20 @@ template <typename _Fulltype, typename _Callable> struct action {
 
 }; // struct action
 
-// For each joint point, there may be more than one advice, so we use 
-// a map to manage them. Specifically, the advice may be put 
+// For each joint point, there may be more than one advice, so we use
+// a map to manage them. Specifically, the advice may be put
 // 1. before jointpoint
 // 2. around jointpoint
 // 3. after jointpoint
 // for before case, advices should behave like stack, last inject, first exec
 // for after case, advices should behave like pipe, first inject, first exec
-// for around case, advice should work in a in inhertive callback way  
+// for around case, advice should work in a in inhertive callback way
 
-// Invoke is a resolver for all hooked advices and execute with 
+// Invoke is a resolver for all hooked advices and execute with
 // real params for certain jointpoint
 //
 // Here we identify jointpint by the hashcode of each original member func.
-// 
+//
 // In order to support jointpoints, we need a delegate template function.
 // for each joint point, we need to define like this:
 //
@@ -517,23 +517,26 @@ template <typename _Fulltype, typename _Class, typename _Ret,
           typename... _Params>
 _Ret& invoke(_Fulltype* self, _Ret (_Class::*mf)(_Params...), _Params... args) {
 
-    using action_t = qaop::action<_Fulltype, std::function<int(_Fulltype*, _Params...)>>;
-    using action_r_t = qaop::action<_Fulltype, std::function<int(_Fulltype*, _Ret*, _Params...)>>;
-    
+    using action_t =
+            qaop::action<_Fulltype, std::function<int(_Fulltype*, _Params...)>>;
+    using action_r_t =
+            qaop::action<_Fulltype,
+                         std::function<int(_Fulltype*, _Ret*, _Params...)>>;
+
     // here we use action_t (without ret) signature for "::before",
-    // because before the call process, the ret value is meaningless. 
+    // because before the call process, the ret value is meaningless.
     auto range = proxy<_Fulltype, std::multimap<unsigned int, action_t*>,
                        qaop::Name("::before")>()
                          .equal_range(HASHFUNC(mf));
     for (auto it = range.first; it != range.second; it++) {
         it->second->template execute(self, args...);
     }
-    
+
     // default dummy action
     std::function<int()> f = []() { return 0; };
     static _Ret temp;
     _Ret* ret = &temp;
-    
+
     // Here we must use advice, which is higer order fucntion
     // f = advice(self,f);  in this way we got recursive calls executed;
     auto range_i = proxy<_Fulltype, std::multimap<unsigned int, action_r_t*>,
@@ -563,8 +566,8 @@ _Ret& invoke(_Fulltype* self, _Ret (_Class::*mf)(_Params...), _Params... args) {
 // void version.
 template <typename _Fulltype, typename _Class, typename... _Params>
 void invoke(_Fulltype* self, void (_Class::*mf)(_Params...), _Params... args) {
-    typedef qaop::action<_Fulltype, std::function<int(_Fulltype*, _Params...)>>
-            action_t;
+    using action_t =
+            qaop::action<_Fulltype, std::function<int(_Fulltype*, _Params...)>>;
 
     auto range = proxy<_Fulltype, std::multimap<unsigned int, action_t*>,
                        qaop::Name("::before")>()
@@ -596,7 +599,7 @@ void invoke(_Fulltype* self, void (_Class::*mf)(_Params...), _Params... args) {
     }
 }
 
-// Waven is responsible for preparing the actions & advices 
+// Waven is responsible for preparing the actions & advices
 // it should be easier to use.
 
 template <typename _Fulltype> struct waven {
@@ -606,9 +609,9 @@ template <typename _Fulltype> struct waven {
     before(_Ret (_Class::*func)(_Params...),
            qaop::action<_Fulltype, std::function<int(_Fulltype*, _Params...)>>*
                    action) {
-        typedef qaop::action<_Fulltype,
-                             std::function<int(_Fulltype*, _Params...)>>
-                action_t;
+        using action_t =
+                qaop::action<_Fulltype,
+                             std::function<int(_Fulltype*, _Params...)>>;
         auto& mp = proxy<_Fulltype, std::multimap<unsigned int, action_t*>,
                          qaop::Name("::before")>();
         mp.insert(std::pair<unsigned int, action_t*>(
@@ -622,9 +625,8 @@ template <typename _Fulltype> struct waven {
             qaop::action<_Fulltype,                                            \
                          std::function<int(_Fulltype*, _Ret*, _Params...)>>*   \
                     action) {                                                  \
-        typedef qaop::action<                                                  \
-                _Fulltype, std::function<int(_Fulltype*, _Ret*, _Params...)>>  \
-                action_r_t;                                                    \
+        using action_r_t = qaop::action<                                       \
+                _Fulltype, std::function<int(_Fulltype*, _Ret*, _Params...)>>; \
         auto& mp = proxy<_Fulltype, std::multimap<unsigned int, action_r_t*>,  \
                          qaop::Name("::" #POSI)>();                            \
         mp.insert(                                                             \
@@ -637,9 +639,9 @@ template <typename _Fulltype> struct waven {
     POSI(void (_Class::*func)(_Params...),                                     \
          qaop::action<_Fulltype, std::function<int(_Fulltype*, _Params...)>>*  \
                  action) {                                                     \
-        typedef qaop::action<_Fulltype,                                        \
-                             std::function<int(_Fulltype*, _Params...)>>       \
-                action_t;                                                      \
+        using action_t =                                                       \
+                qaop::action<_Fulltype,                                        \
+                             std::function<int(_Fulltype*, _Params...)>>;      \
         auto& mp = proxy<_Fulltype, std::multimap<unsigned int, action_t*>,    \
                          qaop::Name("::" #POSI)>();                            \
         mp.insert(std::pair<unsigned int, action_t*>(HASHFUNC(func), action)); \
@@ -683,7 +685,7 @@ template <typename _Fulltype> struct waven {
 // macro, surely.
 //
 // Need:
-// 1. typedef baseclass base_t;
+// 1. using base_t = baseclass;
 // 2. of course every derived class must have the copy constructor defined.
 //
 template <typename T> T* self_clone(T* const self) { return new T(*self); }
@@ -706,8 +708,8 @@ typename std::enable_if<
         !std::is_constructible<T>::value,
         typename std::add_pointer<typename std::decay<T>::type>::type>::type
 clone(T& obj) {
-    typedef typename std::decay<T>::type rval_t;
-    typedef typename std::add_pointer<rval_t>::type ptr_t;
+    using rval_t = typename std::decay<T>::type;
+    using ptr_t = typename std::add_pointer<rval_t>::type;
     return dynamic_cast<ptr_t>(obj.clone());
 }
 template <typename T>
@@ -715,7 +717,7 @@ typename std::enable_if<
         std::is_constructible<T>::value,
         typename std::add_pointer<typename std::decay<T>::type>::type>::type
 clone(T& obj) {
-    typedef typename std::decay<T>::type rval_t;
+    using rval_t = typename std::decay<T>::type;
     return new rval_t(obj);
 }
 
@@ -724,8 +726,8 @@ typename std::enable_if<
         !std::is_constructible<T>::value,
         typename std::add_pointer<typename std::decay<T>::type>::type>::type
 take(T&& obj) {
-    typedef typename std::decay<T>::type rval_t;
-    typedef typename std::add_pointer<rval_t>::type ptr_t;
+    using rval_t = typename std::decay<T>::type;
+    using ptr_t = typename std::add_pointer<rval_t>::type;
     ptr_t temp = dynamic_cast<ptr_t>(obj.create_default());
     swap(*temp, obj);
     return temp;
@@ -735,8 +737,8 @@ typename std::enable_if<
         std::is_constructible<T>::value,
         typename std::add_pointer<typename std::decay<T>::type>::type>::type
 take(T&& obj) {
-    typedef typename std::decay<T>::type rval_t;
-    typedef typename std::add_pointer<rval_t>::type ptr_t;
+    using rval_t = typename std::decay<T>::type;
+    using ptr_t = typename std::add_pointer<rval_t>::type;
     ptr_t temp = new rval_t();
     swap(*temp, obj);
     return temp;
